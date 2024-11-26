@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sys
-import pathlib import Path
+from pathlib import Path
 
 from sequences.infra import sequences_application
 from sequences.utils import logger
