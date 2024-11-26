@@ -1,0 +1,65 @@
+name: bridging study
+env:
+    LABEL: ${{ github.event.inputs.label || github.ref_type == 'tag' && github.ref || github.sha}}
+    OUTPUTDIR: /Users/Spencer/Github/
+
+on:
+    workflow_dispatch:
+        inputs:
+            label:
+                description: "Label for bridging study"
+                required: false
+                default: ""
+            extra_parameters:
+                description: "Extra parameters (i.e. --Key=value)"
+                default: ""
+            save_results:
+                description: "save results"
+                required: false
+                default: "true"
+            thread_count:
+                description: "number of threads"
+                required: false
+                default: "4"
+jobs:
+    run-on-datasets:
+        runs-on: [""]
+        timeout-minutes: 120
+        outputs:
+            outputdir: ${{ steps.sequences_run.outputs.outputdir}}
+        strategy:
+            matrix:
+                datasets:
+                    - config.yaml -f --threads {{github.event.inputs.thread_count}} --output $OUTPUTDIR/sequences/$LABEL/test1
+                    - config.yaml -f --threads {{github.event.inputs.thread_count}} --output $OUTPUTDIR/sequences/$LABEL/test2
+                python-version: ["3.12"]
+        steps:
+            - uses: actions/checkout@v4
+            - run: git fetch --prune --unshallow --tags
+            - uses: ./.github/setup
+            - name: run sequences
+                id: sequences_run
+                run: |
+                    poetry run sequences --config ${{ matrix.datasets }} ${{ github.event.inputs.extra_parameters }}
+    
+    summarize_results:
+        needs: [run-sequences-on-datasets]
+        runs-on: [""]
+        timeout-minutes: 30
+        if: always()
+        steps:
+            - uses: actions/checkout@v4
+            - run: git feth --prune --unshallow --tags
+            - uses: ./.github/setup
+            - name: summarize
+              if: always()
+              run: |
+                poetry run python sequences/tests/summarize_bridging.py -i $OUTPUTDIR/sequences/$LABEL -o $OUTPUTDIR/bridging_study_results -s GITHUB_STEP_SUMMARY --save ${{ github.event.inputs.save_bridging_results }}
+            - name: upload data
+              if: always()
+              uses: actions/upload-artifact@v4
+              with:
+                name: sequences_bridging_results
+                path: $OUTPUTDIR/sequences_bridging_results
+                retention-dats: 7
+                overwrite: true

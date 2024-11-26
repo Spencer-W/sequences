@@ -1,0 +1,35 @@
+name: Unit Tests
+on: [workflow_dispatch, pull_request]
+
+jobs:
+    code-style-check:
+        runs-on: ""
+        timeout-minutes: 3
+        strategy:
+            matrix:
+                python-version: ["3.12"]
+        steps:
+            - uses: actions/checkout@v4
+            - run: git fetch --prune --unshallow --tags
+            - uses: ./.github/setup
+            - name: black formatting check
+              run: |
+                poetry run black --check .
+            - name: mypy check
+              run: |
+                poetry run mypy --install-types --non-interactive .
+                poetry run mypy .
+                        - name: black formatting check
+            - name: ruff check
+              run: |
+                poetry run ruff check .
+
+    unit-test-with-py:
+        runs-on: ["performance"]
+        timeout-minutes:5
+        strategy:
+            matrix:
+                python-version: ["3.12"]
+        steps:
+            - uses: actions/checkout@v4
+            - run git fetch --prune --unshallow --tags

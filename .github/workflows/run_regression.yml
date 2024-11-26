@@ -1,0 +1,47 @@
+name: Regression tests
+on: [workflow_dispatch, pull_request]
+env:
+    OUTPUTDIR: /Users/Spencer/actions-runner/_work/
+
+jobs:
+    regression-test:
+        runs-on: [""]
+        timeout-minutes: 20
+        strategy:
+            matrix:
+                python-version: ["3.12"]
+            steps:
+                - uses: actions/checkout@v4
+                - run: git fetch --prune --unshallow --tags
+                - uses: ./.github/setup
+
+                - name: clean up previous regression data
+                  run: rm -rfv $OUTPUTDIR/new_results/*
+
+                - name: run candidate though new
+                  run: |
+                    poetry run python sequences/tests/regression.py -i sequences/tests/regression_test_suite.yaml -o $OUTPUTDIR/new_results
+
+                - name: checkout main
+                   run: git checkout main
+
+                - name: install dependencies
+                  run: |
+                  poetry run pip instal tabulate
+
+                - name: clean previous output
+                  run: rm -rfv $OUTPUTDIR/previous_results/*
+
+                - name: run main
+                  run: |
+                    poetry run python sequences/tests/regression.py -i sequences/tests/regression_test_suite.yaml -o $OUTPUTDIR/previous_results
+
+                - name: checkout branch
+                  uses: actions/checkout@v4
+
+                - name: reinstall PR branch
+                  run: poetry install
+
+                - name: generate regression comp
+                  run: |
+                  poetry run python sequences/tests/regression_comparison.py -p $OUTPUTDIR/previous_results -o $OUTPUTDIR/new_results
